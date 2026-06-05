@@ -30,7 +30,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="v1.3 · Inject & Save"
+                android:text="v1.3 · Inject &amp; Save"
                 android:textSize="13sp"
                 android:textColor="@color/textSecondary"
                 android:layout_marginBottom="32dp"
