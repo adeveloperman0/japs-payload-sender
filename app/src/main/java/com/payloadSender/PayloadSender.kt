@@ -19,13 +19,13 @@ object PayloadSender {
             }
             Result(true, "OK")
         } catch (e: SocketTimeoutException) {
-            Result(false, "Timeout: can't connect to $ip:$port")
+            Result(false, "Timeout: no se pudo conectar a $ip:$port")
         } catch (e: java.net.ConnectException) {
-            Result(false, "Connection refused on $ip:$port")
+            Result(false, "Conexión rechazada en $ip:$port")
         } catch (e: java.net.UnknownHostException) {
-            Result(false, "Host unknown: $ip")
+            Result(false, "Host desconocido: $ip")
         } catch (e: Exception) {
-            Result(false, e.message ?: "Unknown error")
+            Result(false, e.message ?: "Error desconocido")
         }
     }
 }

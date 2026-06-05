@@ -59,13 +59,22 @@ class MainActivity : AppCompatActivity() {
             type = "*/*"
             addCategory(Intent.CATEGORY_OPENABLE)
         }
-        startActivityForResult(Intent.createChooser(intent, "Select payload"), PICK_FILE_REQUEST)
+        startActivityForResult(Intent.createChooser(intent, "Seleccionar payload"), PICK_FILE_REQUEST)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == PICK_FILE_REQUEST && resultCode == Activity.RESULT_OK) {
             data?.data?.let { uri ->
+                try {
+                    // Persist the URI permission so it works after app restart
+                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+                } catch (e: Exception) {
+                    // Some files don't support persistent permissions, that's OK
+                }
+                
                 selectedFileUri = uri
                 val fileName = getFileName(uri)
                 etPayloadPath.setText(fileName)
@@ -90,24 +99,24 @@ class MainActivity : AppCompatActivity() {
         val uri  = selectedFileUri
 
         if (ip.isEmpty()) {
-            showStatus("⚠ Enter an IP address", StatusType.ERROR); return
+            showStatus("⚠ Ingresa una dirección IP", StatusType.ERROR); return
         }
         if (port == null || port !in 1..65535) {
-            showStatus("⚠ Invalid port (1–65535)", StatusType.ERROR); return
+            showStatus("⚠ Puerto inválido (1–65535)", StatusType.ERROR); return
         }
         if (uri == null) {
-            showStatus("⚠ Select a payload file", StatusType.ERROR); return
+            showStatus("⚠ Selecciona un archivo payload", StatusType.ERROR); return
         }
 
         val bytes = try {
             contentResolver.openInputStream(uri)?.readBytes()
         } catch (e: Exception) {
-            showStatus("✗ Error reading file: ${e.message}", StatusType.ERROR)
+            showStatus("✗ Error: ${e.localizedMessage}", StatusType.ERROR)
             return
         }
 
         if (bytes == null || bytes.isEmpty()) {
-            showStatus("✗ The file is empty", StatusType.ERROR); return
+            showStatus("✗ El archivo está vacío", StatusType.ERROR); return
         }
 
         sendPayload(ip, port, bytes)
@@ -115,7 +124,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun sendPayload(ip: String, port: Int, data: ByteArray) {
         setUiEnabled(false)
-        showStatus("Connecting to $ip:$port…", StatusType.PROGRESS)
+        showStatus("Conectando a $ip:$port…", StatusType.PROGRESS)
         progressBar.visibility = View.VISIBLE
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -124,7 +133,7 @@ class MainActivity : AppCompatActivity() {
                 progressBar.visibility = View.GONE
                 setUiEnabled(true)
                 if (result.success) {
-                    showStatus("✓ Payload sent (${data.size} bytes)", StatusType.SUCCESS)
+                    showStatus("✓ Payload enviado (${data.size} bytes)", StatusType.SUCCESS)
                 } else {
                     showStatus("✗ Error: ${result.message}", StatusType.ERROR)
                 }
@@ -144,16 +153,42 @@ class MainActivity : AppCompatActivity() {
         presetAdapter = PresetAdapter(
             mutableListOf(),
             onPresetClick = { preset ->
+                val uri = try {
+                    Uri.parse(preset.payloadUri)
+                } catch (e: Exception) {
+                    showStatus("✗ Error en preset: URI inválida", StatusType.ERROR)
+                    return@PresetAdapter
+                }
+
+                try {
+                    // Request persistent permission to keep access after app restart
+                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+                } catch (e: Exception) {
+                    // Permission might already exist or file might not support it
+                }
+
                 etIpAddress.setText(preset.ipAddress)
                 etPort.setText(preset.port.toString())
                 etPayloadPath.setText(preset.payloadFileName)
-                selectedFileUri = Uri.parse(preset.payloadUri)
-                showStatus("✓ Preset loaded: ${preset.name}", StatusType.SUCCESS)
+                selectedFileUri = uri
+                showStatus("✓ Preset cargado: ${preset.name}", StatusType.SUCCESS)
             },
             onDeleteClick = { preset ->
+                // Release persistent permission when deleting preset
+                try {
+                    val uri = Uri.parse(preset.payloadUri)
+                    contentResolver.releasePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: Exception) {
+                    // Permission might not exist, that's OK
+                }
+                
                 PresetManager.deletePreset(this, preset.id)
                 loadPresets()
-                showStatus("✗ Preset deleted", StatusType.ERROR)
+                showStatus("✗ Preset eliminado", StatusType.ERROR)
             }
         )
         rvPresets.layoutManager = LinearLayoutManager(this)
@@ -174,23 +209,23 @@ class MainActivity : AppCompatActivity() {
         val uri = selectedFileUri
 
         if (ip.isEmpty()) {
-            showStatus("⚠ Enter an IP address", StatusType.ERROR); return
+            showStatus("⚠ Ingresa una dirección IP", StatusType.ERROR); return
         }
         if (port == null || port !in 1..65535) {
-            showStatus("⚠ Invalid port (1–65535)", StatusType.ERROR); return
+            showStatus("⚠ Puerto inválido (1–65535)", StatusType.ERROR); return
         }
         if (fileName.isEmpty()) {
-            showStatus("⚠ Select a payload file", StatusType.ERROR); return
+            showStatus("⚠ Selecciona un archivo payload", StatusType.ERROR); return
         }
 
         val input = EditText(this).apply {
-            hint = "Preset name"
+            hint = "Nombre del preset"
         }
 
         AlertDialog.Builder(this)
-            .setTitle("Save preset")
+            .setTitle("Guardar preset")
             .setView(input)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton("Guardar") { _, _ ->
                 val presetName = input.text.toString().trim()
                 if (presetName.isNotEmpty() && uri != null) {
                     val preset = Preset(
@@ -202,10 +237,10 @@ class MainActivity : AppCompatActivity() {
                     )
                     PresetManager.savePreset(this, preset)
                     loadPresets()
-                    showStatus("✓ Preset saved: $presetName", StatusType.SUCCESS)
+                    showStatus("✓ Preset guardado: $presetName", StatusType.SUCCESS)
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton("Cancelar", null)
             .show()
     }
 
