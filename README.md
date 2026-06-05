@@ -37,7 +37,7 @@
 │ Status: Idle...             │
 ├─────────────────────────────┤
 │ Saved Presets               │
-│ ✓ MyPreset [Load] [✕]       │
+│ ✓ MyPreset [Load] [✕]      │
 │ ✓ Test     [Load] [✕]      │
 └─────────────────────────────┘
 ```
