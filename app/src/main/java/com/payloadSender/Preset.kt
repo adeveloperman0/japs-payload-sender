@@ -6,5 +6,5 @@ data class Preset(
     val ipAddress: String,
     val port: Int,
     val payloadFileName: String,
-    val payloadUri: String
+    val cachedPayloadFile: String  // Filename in app cache
 )

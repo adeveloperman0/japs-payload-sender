@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var presetAdapter: PresetAdapter
 
     private var selectedFileUri: Uri? = null
+    private var selectedFileBytes: ByteArray? = null
     private val PICK_FILE_REQUEST = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,17 +68,20 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == PICK_FILE_REQUEST && resultCode == Activity.RESULT_OK) {
             data?.data?.let { uri ->
                 try {
-                    // Persist the URI permission so it works after app restart
-                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+                    // Read file bytes
+                    val bytes = contentResolver.openInputStream(uri)?.readBytes()
+                    if (bytes != null && bytes.isNotEmpty()) {
+                        selectedFileBytes = bytes
+                        selectedFileUri = uri
+                        val fileName = getFileName(uri)
+                        etPayloadPath.setText(fileName)
+                        showStatus("✓ Archivo seleccionado (${bytes.size} bytes)", StatusType.SUCCESS)
+                    } else {
+                        showStatus("✗ El archivo está vacío", StatusType.ERROR)
+                    }
                 } catch (e: Exception) {
-                    // Some files don't support persistent permissions, that's OK
+                    showStatus("✗ Error: ${e.message}", StatusType.ERROR)
                 }
-                
-                selectedFileUri = uri
-                val fileName = getFileName(uri)
-                etPayloadPath.setText(fileName)
             }
         }
     }
@@ -96,7 +100,7 @@ class MainActivity : AppCompatActivity() {
     private fun injectPayload() {
         val ip   = etIpAddress.text.toString().trim()
         val port = etPort.text.toString().trim().toIntOrNull()
-        val uri  = selectedFileUri
+        val bytes = selectedFileBytes
 
         if (ip.isEmpty()) {
             showStatus("⚠ Ingresa una dirección IP", StatusType.ERROR); return
@@ -104,19 +108,8 @@ class MainActivity : AppCompatActivity() {
         if (port == null || port !in 1..65535) {
             showStatus("⚠ Puerto inválido (1–65535)", StatusType.ERROR); return
         }
-        if (uri == null) {
-            showStatus("⚠ Selecciona un archivo payload", StatusType.ERROR); return
-        }
-
-        val bytes = try {
-            contentResolver.openInputStream(uri)?.readBytes()
-        } catch (e: Exception) {
-            showStatus("✗ Error: ${e.localizedMessage}", StatusType.ERROR)
-            return
-        }
-
         if (bytes == null || bytes.isEmpty()) {
-            showStatus("✗ El archivo está vacío", StatusType.ERROR); return
+            showStatus("⚠ Selecciona un archivo payload", StatusType.ERROR); return
         }
 
         sendPayload(ip, port, bytes)
@@ -153,39 +146,22 @@ class MainActivity : AppCompatActivity() {
         presetAdapter = PresetAdapter(
             mutableListOf(),
             onPresetClick = { preset ->
-                val uri = try {
-                    Uri.parse(preset.payloadUri)
-                } catch (e: Exception) {
-                    showStatus("✗ Error en preset: URI inválida", StatusType.ERROR)
+                // Load payload bytes from cache
+                val bytes = PresetManager.getPayloadBytes(this, preset)
+                
+                if (bytes == null || bytes.isEmpty()) {
+                    showStatus("✗ Archivo del preset no encontrado", StatusType.ERROR)
                     return@PresetAdapter
-                }
-
-                try {
-                    // Request persistent permission to keep access after app restart
-                    val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    contentResolver.takePersistableUriPermission(uri, takeFlags)
-                } catch (e: Exception) {
-                    // Permission might already exist or file might not support it
                 }
 
                 etIpAddress.setText(preset.ipAddress)
                 etPort.setText(preset.port.toString())
                 etPayloadPath.setText(preset.payloadFileName)
-                selectedFileUri = uri
+                selectedFileBytes = bytes
+                selectedFileUri = null  // No longer using URI
                 showStatus("✓ Preset cargado: ${preset.name}", StatusType.SUCCESS)
             },
             onDeleteClick = { preset ->
-                // Release persistent permission when deleting preset
-                try {
-                    val uri = Uri.parse(preset.payloadUri)
-                    contentResolver.releasePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                } catch (e: Exception) {
-                    // Permission might not exist, that's OK
-                }
-                
                 PresetManager.deletePreset(this, preset.id)
                 loadPresets()
                 showStatus("✗ Preset eliminado", StatusType.ERROR)
@@ -206,7 +182,7 @@ class MainActivity : AppCompatActivity() {
         val ip = etIpAddress.text.toString().trim()
         val port = etPort.text.toString().trim().toIntOrNull()
         val fileName = etPayloadPath.text.toString().trim()
-        val uri = selectedFileUri
+        val bytes = selectedFileBytes
 
         if (ip.isEmpty()) {
             showStatus("⚠ Ingresa una dirección IP", StatusType.ERROR); return
@@ -215,6 +191,9 @@ class MainActivity : AppCompatActivity() {
             showStatus("⚠ Puerto inválido (1–65535)", StatusType.ERROR); return
         }
         if (fileName.isEmpty()) {
+            showStatus("⚠ Selecciona un archivo payload", StatusType.ERROR); return
+        }
+        if (bytes == null) {
             showStatus("⚠ Selecciona un archivo payload", StatusType.ERROR); return
         }
 
@@ -227,17 +206,25 @@ class MainActivity : AppCompatActivity() {
             .setView(input)
             .setPositiveButton("Guardar") { _, _ ->
                 val presetName = input.text.toString().trim()
-                if (presetName.isNotEmpty() && uri != null) {
-                    val preset = Preset(
-                        name = presetName,
-                        ipAddress = ip,
-                        port = port,
-                        payloadFileName = fileName,
-                        payloadUri = uri.toString()
-                    )
-                    PresetManager.savePreset(this, preset)
-                    loadPresets()
-                    showStatus("✓ Preset guardado: $presetName", StatusType.SUCCESS)
+                if (presetName.isNotEmpty()) {
+                    // Cache the payload file
+                    val cacheFileName = "payload_${System.currentTimeMillis()}.bin"
+                    val cachedFile = PresetManager.savePayloadBytes(this, bytes, cacheFileName)
+                    
+                    if (cachedFile != null) {
+                        val preset = Preset(
+                            name = presetName,
+                            ipAddress = ip,
+                            port = port,
+                            payloadFileName = fileName,
+                            cachedPayloadFile = cachedFile
+                        )
+                        PresetManager.savePreset(this, preset)
+                        loadPresets()
+                        showStatus("✓ Preset guardado: $presetName", StatusType.SUCCESS)
+                    } else {
+                        showStatus("✗ Error guardando archivo", StatusType.ERROR)
+                    }
                 }
             }
             .setNegativeButton("Cancelar", null)
