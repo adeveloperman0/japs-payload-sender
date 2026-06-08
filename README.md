@@ -12,35 +12,11 @@
 
 - **Quick Injection** — Send any `.bin` payload to a target IP and port
 - **Preset System** — Save frequently used configurations (IP, port, payload)
+- **Autoload System** — Ability to save an automated workflow and launch it
 - **One-Click Load** — Load any saved preset instantly
 - **Status Feedback** — Real-time connection and transfer status
 - **No Ads** — 100% open-source, privacy-focused
 - **Kotlin + Coroutines** — Non-blocking TCP on background thread
-
----
-
-## 📱 UI Overview
-
-```
-┌─────────────────────────────┐
-│  Payload Sender             │
-│      v1.1                   │
-├─────────────────────────────┤
-│ IP Address    │    Port     │
-│ [192.168.X.X] │ [9021]      │
-├─────────────────────────────┤
-│ Payload Path        │  ...  │
-│ [payload.bin]       │ [📁]  │
-├─────────────────────────────┤
-│ [Inject Payload] [Save]     │
-├─────────────────────────────┤
-│ Status: Idle...             │
-├─────────────────────────────┤
-│ Saved Presets               │
-│ ✓ MyPreset [Load] [✕]      │
-│ ✓ Test     [Load] [✕]      │
-└─────────────────────────────┘
-```
 
 ---
 
@@ -64,36 +40,10 @@
 2. Fields auto-populate
 3. Tap `Inject Payload` immediately
 
----
-
-## 🏗️ Project Structure
-
-```
-PayloadSender/
-├── app/src/main/
-│   ├── java/com/payloadSender/
-│   │   ├── MainActivity.kt          # UI & presets logic
-│   │   ├── PresetManager.kt         # SharedPreferences storage
-│   │   ├── PresetAdapter.kt         # RecyclerView adapter
-│   │   ├── PayloadSender.kt         # TCP socket logic
-│   │   └── Preset.kt                # Data class
-│   ├── res/
-│   │   ├── layout/
-│   │   │   ├── activity_main.xml
-│   │   │   └── item_preset.xml
-│   │   ├── drawable/
-│   │   │   └── [button & input styles]
-│   │   ├── mipmap-*/
-│   │   │   └── ic_launcher.png      # App icons (5 densities)
-│   │   └── values/
-│   │       ├── colors.xml
-│   │       ├── strings.xml
-│   │       └── styles.xml
-│   └── AndroidManifest.xml
-├── build.gradle
-├── gradle.properties
-└── settings.gradle
-```
+### Create an Autoload flow
+1. On a saved preset, tap `Auto`
+2. This action will create a step in the flow and a 2-second delay
+3. Tap `Launch Autoload`
 
 ---
 
