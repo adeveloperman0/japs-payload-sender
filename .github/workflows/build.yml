@@ -1,33 +1,38 @@
-name: Build APK
+name: Build Release APK
+
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: 17
 
-      - name: Clean gradle cache
-        run: rm -rf ~/.gradle
-
-      - name: Generate Gradle Wrapper
+      - name: Restore Keystore
         run: |
-          wget https://services.gradle.org/distributions/gradle-8.2-bin.zip -q
-          unzip -q gradle-8.2-bin.zip
-          ./gradle-8.2/bin/gradle wrapper --gradle-version 8.2
-          chmod +x gradlew
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > payloadsender.keystore
 
-      - name: Build APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Grant execute permission
+        run: chmod +x gradlew
 
-      - uses: actions/upload-artifact@v4
+      - name: Build Release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: PayloadSender
-          path: app/build/outputs/apk/debug/payloadSender.apk
+          name: JAPS-Release
+          path: app/build/outputs/apk/release/payloadSender.apk
