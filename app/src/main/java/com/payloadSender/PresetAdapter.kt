@@ -10,13 +10,15 @@ import androidx.recyclerview.widget.RecyclerView
 class PresetAdapter(
     private val presets: MutableList<Preset>,
     private val onPresetClick: (Preset) -> Unit,
-    private val onDeleteClick: (Preset) -> Unit
+    private val onDeleteClick: (Preset) -> Unit,
+    private val onAutoloadClick: (Preset) -> Unit
 ) : RecyclerView.Adapter<PresetAdapter.PresetViewHolder>() {
 
     inner class PresetViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvName: TextView = itemView.findViewById(R.id.tvPresetName)
         val tvDetails: TextView = itemView.findViewById(R.id.tvPresetDetails)
         val btnLoad: Button = itemView.findViewById(R.id.btnLoadPreset)
+        val btnAutoload: Button = itemView.findViewById(R.id.btnAddAutoload)
         val btnDelete: Button = itemView.findViewById(R.id.btnDeletePreset)
 
         fun bind(preset: Preset) {
@@ -24,6 +26,7 @@ class PresetAdapter(
             tvDetails.text = "${preset.ipAddress}:${preset.port} • ${preset.payloadFileName}"
 
             btnLoad.setOnClickListener { onPresetClick(preset) }
+            btnAutoload.setOnClickListener { onAutoloadClick(preset) }
             btnDelete.setOnClickListener { onDeleteClick(preset) }
         }
     }
