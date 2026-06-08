@@ -7,18 +7,32 @@ android {
     compileSdk 34
     namespace "com.payloadSender"
 
+    signingConfigs {
+        release {
+            storeFile file("../payloadsender.keystore")
+            storePassword System.getenv("KEYSTORE_PASSWORD")
+            keyAlias System.getenv("KEY_ALIAS")
+            keyPassword System.getenv("KEY_PASSWORD")
+        }
+    }
+
     defaultConfig {
         applicationId "com.payloadSender"
         minSdk 21
         targetSdk 34
-        versionCode 7
-        versionName "1.5.1"
+        versionCode 8
+        versionName "1.5.2"
     }
 
     buildTypes {
         release {
+            signingConfig signingConfigs.release
+
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            proguardFiles getDefaultProguardFile(
+                    'proguard-android-optimize.txt'
+            ), 'proguard-rules.pro'
         }
     }
 
