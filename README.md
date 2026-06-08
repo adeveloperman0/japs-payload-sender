@@ -2,7 +2,7 @@
 
 > A clean Android app for injecting binary payloads over TCP.
 
-![Version](https://img.shields.io/badge/version-1.1-green)
+![Version](https://img.shields.io/badge/version-1.2-green)
 ![Min SDK](https://img.shields.io/badge/minSDK-21-blue)
 ![Target SDK](https://img.shields.io/badge/targetSDK-34-blue)
 
