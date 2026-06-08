@@ -73,7 +73,7 @@ object AutoloadManager {
     }
 
     fun addPresetToAutoload(context: Context, preset: Preset) {
-        val current = getAutoloadQueue(context, emptyList()).toMutableList()
+        val current = getAutoloadQueue(context, PresetManager.getPresets(context)).toMutableList()
         current.add(AutoloadItem.PresetItem(preset))
 
         // Add delay after preset (except for last one)
