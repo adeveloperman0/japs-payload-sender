@@ -209,13 +209,6 @@ class MainActivity : AppCompatActivity() {
         rvPresets.adapter = presetAdapter
     }
 
-    private fun loadPresets() {
-        val presets = PresetManager.getPresets(this)
-        presetAdapter.updateList(presets)
-        tvPresetsLabel.visibility = if (presets.isEmpty()) View.GONE else View.VISIBLE
-        rvPresets.visibility = if (presets.isEmpty()) View.GONE else View.VISIBLE
-    }
-
     private fun savePreset() {
         val ip = etIpAddress.text.toString().trim()
         val port = etPort.text.toString().trim().toIntOrNull()
